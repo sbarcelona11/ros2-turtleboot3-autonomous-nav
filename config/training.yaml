@@ -1,0 +1,84 @@
+dqn_trainer:
+  ros__parameters:
+    observation_size: 90
+    observation_contract: monitoring-map-v1
+    # RECOVER stays out: it is a controller behaviour, not a policy action.
+    action_count: 5
+    # The mission budget is simulated time, so an episode means the same
+    # amount of driving however fast the simulation and the machine run.
+    #
+    # Long enough for the task to be finished in one: episodes reach a median
+    # of 594 decisions, against the 518 the deterministic explorer needs.  That
+    # is 4.95 per simulated second, the laser rate.  A longer budget was tried
+    # and reverted - it buys no extra reach and costs proportionally more wall
+    # time per episode, so the campaign sees fewer starts for the same hours.
+    max_episode_seconds: 120.0
+    # Only a guard against a clock that stops advancing.
+    max_steps: 5000
+    max_episodes: 100
+    # Measured against the region the robot can still reach, so a cleared
+    # scenario reads as complete.  Reaching the last shadows means crossing
+    # already mapped ground, so the stall budget must allow a trip that earns
+    # nothing on the way.
+    target_coverage: 0.98
+    # Also in simulated seconds: reaching the last shadows means crossing
+    # already monitored ground, which earns nothing on the way.
+    stall_seconds: 25.0
+    # Cells in the arena-sized grid; keep in step with config/exploration.yaml.
+    map_cell_count: 9409
+    frontier_threshold: 0.50
+    # Roughly 9000 cells are discovered per episode, so 0.10 per cell buried
+    # the safety penalties at 0.1% of the episode return and left the policy
+    # with no reason to avoid an intervention.
+    new_cell_reward: 0.01
+    frontier_bonus: 0.50
+    # Paid per cell of ground closed towards the nearest unmonitored cell.
+    # Without it the reward pays only on arrival, so crossing mapped ground
+    # earns nothing on the way: the previous campaign produced a policy that
+    # took 63% of its decisions as turns in place and a mission that sat
+    # motionless 18 cm from a wall repeating one action for 3000 steps.
+    frontier_approach_reward: 0.05
+    # Metres the robot must actually cover in a step for it to count as
+    # travelling rather than stalled.  Accepting a frontier distance that
+    # merely fell was not enough: it drifts by a cell on its own as the laser
+    # resolves the map, so a spinning robot kept resetting the stall clock and
+    # turning in place stopped costing it the rest of the episode.  Stall
+    # terminations fell to 1 in 39 and the resulting policy spun through 79.8%
+    # of its decisions.  A step of driving covers about 0.04 m; a turn covers
+    # none.
+    progress_displacement: 0.01
+    # Charged per simulated second, not per step, so a faster observation
+    # rate does not make the same behaviour look more expensive.
+    step_penalty: 0.01
+    no_progress_penalty: 0.10
+    # Was 1.00 against a measured step cost of 0.044, so one brush with a wall
+    # cost as much as twenty-three steps of doing nothing at all.  Avoidance
+    # dominated the return and the policy simply stopped approaching anything.
+    intervention_penalty: 0.10
+    recovery_penalty: 0.50
+    replay_capacity: 100000
+    batch_size: 32
+    gamma: 0.99
+    # Huber y el recorte de gradiente acotan cada paso, así que una tasa
+    # prudente ya no hace falta: con 0.001 la separación entre valores Q se
+    # encogía (0.277 -> 0.186) y la política greedy no superaba al azar.
+    learning_rate: 0.005
+    # Estabilidad del aprendizaje. Con pérdida cuadrática el gradiente crece
+    # sin límite con el error temporal y la política divergió: la cobertura
+    # cayó del 59.9% al 35.7% en cinco evaluaciones seguidas mientras epsilon
+    # bajaba y la política aprendida tomaba el control.
+    huber_delta: 1.0
+    gradient_clip: 10.0
+    reward_clip: 1.0
+    target_sync_steps: 1000
+    epsilon_start: 1.00
+    epsilon_min: 0.05
+    evaluation_interval: 10
+    evaluation_episodes: 3
+    # Gazebo's server and GUI saturate the machine while a world loads, so a
+    # tight deadline aborts training on contention rather than on a real hang.
+    reset_timeout_seconds: 30.0
+    # A slow reset RPC is retried rather than ending the campaign; one timeout
+    # once cost 18 episodes of training. Sensor failures still abort at once.
+    reset_retry_limit: 3
+    model_directory: models

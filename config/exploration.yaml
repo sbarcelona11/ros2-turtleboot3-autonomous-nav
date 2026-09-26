@@ -1,0 +1,24 @@
+# The grid covers the stage4 arena (walls at +-2.425 m) and nothing beyond it.
+# Padding the grid past the walls would leave permanently unknown cells that
+# no policy can ever reach, deflating coverage and biasing exploration gains
+# towards the outside of the scenario.
+#
+# 97 cells of 0.05 m span 4.85 m, which is the room exactly.  The earlier
+# 100x100 grid from -2.5 m added a 0.075 m rim of wall body and outside ground,
+# and that rim does not stay excluded: the reachable region floods through
+# every cell that is not occupied, and the observed wall face is perforated
+# because a distant wall is sampled sparsely by 360 beams and a cell needs two
+# hits to read as occupied.  A finished run had 456 of its 680 pending cells
+# out there - two thirds of the shortfall was ground no laser can reach.
+coverage_mapper:
+  ros__parameters:
+    map_width: 97
+    map_height: 97
+    map_resolution: 0.05
+    map_origin_x: -2.425
+    map_origin_y: -2.425
+    occupied_threshold: 2
+    # Monitoring means having been near a cell, not merely having seen it: a
+    # 3.5 m LiDAR resolves most of this 4.85 m room from one sweep, so plain
+    # visibility saturates without the robot moving and leaves nothing to learn.
+    inspection_radius: 1.5
