@@ -108,4 +108,7 @@ def test_the_mission_feeds_the_stack_from_the_true_odometry(monkeypatch):
         if perform_substitutions(context, list(source)) == '/odom'
         and TRUE_ODOMETRY_TOPIC in perform_substitutions(context, list(target))
     }
-    assert {'coverage_mapper', 'observation_builder', 'safe_motion_controller'} <= remapped
+    assert {
+        'coverage_mapper', 'observation_builder', 'safe_motion_controller',
+        'exploration_visualizer',
+    } <= remapped
